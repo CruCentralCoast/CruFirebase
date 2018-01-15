@@ -1,7 +1,35 @@
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return get(/databases/$(database)/documents/permissionGroups/admin).data[request.auth.uid]
+    }
+
+    function isEventAdmin() {
+      return get(/databases/$(database)/documents/permissionGroups/eventAdmin).data[request.auth.uid]
+    }
+
+    function isLeader() {
+      return get(/databases/$(database)/documents/communityGroups/$(story)).data.leaders[request.auth.uid]
+    }
+
+    match /users/{userId} {
+      // Allow a request if the user ID in the path is 12345
+      // e.g. /projects/projectId/databases/(default)/documents/users/12345
+      allow read, update: if request.path[6] == request.auth.uid
+    }
+
+    match /communityGroups/{communityGroupId} {
+      allow update: if isLeader();
+    }
+
     match /{document=**} {
-      allow read, write;
+      // This first one needs to be moved to exclude /users/{userId}
+      allow read: if isSignedIn() || isAdmin();
+      allow write: if isAdmin();
     }
   }
 }
