@@ -10,7 +10,11 @@ exports.createUserAccount = functions.auth.user().onCreate(event => {
 	const coll = db.collection("users");
 	coll.doc(uid).set({
 		email : email
-	}).then(()=>{
-		console.log("done");
+	})
+	.then(function() {
+		console.log("New user successfully added to database");
+	})
+	.catch(function(error) {
+		console.error("Error adding new user to database: ", error);
 	});
 });
