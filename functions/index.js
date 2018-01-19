@@ -8,7 +8,7 @@ exports.createUserAccount = functions.auth.user().onCreate(event => {
 	const uid = event.data.uid;
 	const email = event.data.email;
 	const coll = db.collection("users");
-	coll.doc(uid).set({
+	return coll.doc(uid).set({
 		email : email
 	})
 	.then(function() {
