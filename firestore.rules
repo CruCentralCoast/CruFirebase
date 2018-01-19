@@ -5,15 +5,19 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return get(/databases/$(database)/documents/permissionGroups/admin).data[request.auth.uid]
+      return get(/databases/$(database)/documents/permissionGroups/admin).data[request.auth.uid];
     }
 
     function isEventAdmin() {
-      return get(/databases/$(database)/documents/permissionGroups/eventAdmin).data[request.auth.uid]
+      return get(/databases/$(database)/documents/permissionGroups/eventAdmin).data[request.auth.uid];
     }
 
     function isLeader() {
-      return get(/databases/$(database)/documents/communityGroups/$(story)).data.leaders[request.auth.uid]
+      return get(/databases/$(database)/documents/communityGroups/$(story)).data.leaders[request.auth.uid];
+    }
+
+    function isUserCollection(collection) {
+      return collection == "user";
     }
 
     match /users/{userId} {
@@ -27,8 +31,8 @@ service cloud.firestore {
     }
 
     match /{document=**} {
-      // This first one needs to be moved to exclude /users/{userId}
-      allow read: if isSignedIn() || isAdmin();
+      // This should exclude /users/{userId}
+      allow read: if (isSignedIn() && !isUserCollection(request.path[5])) || isAdmin();
       allow write: if isAdmin();
     }
   }
