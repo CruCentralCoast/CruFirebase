@@ -1,16 +1,25 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const express = require('express');
 
+const app = express();
 admin.initializeApp(functions.config().firebase);
 
 const db = admin.firestore();
 
-exports.createUser = functions.https.onRequest((req, res) => {
+/************************************************************************
+* Author: Jacob Nogle ------------------------------------------ 1/2018 *
+* Create a new user                                                     *
+* Expects email, password, first/last name, phone number, and photo url *
+*  in request body                                                      *
+*************************************************************************/
+app.post('/users/register-user',(req, res) => {
 	var password = req.body.password;
 	var email = req.body.email;
 	var first = req.body.first;
 	var last = req.body.last;
 	var phone = req.body.phone;
+    var imageUrl = req.body.imageLink;  // can get this after uploading an image to google cloud storage from client-side
 
 	if(typeof phone === 'undefined') {
         var json_res = {
@@ -105,35 +114,79 @@ exports.createUser = functions.https.onRequest((req, res) => {
     }
     const newUser = {
   		email: email,
-  		emailVerified: true,
-  		phoneNumber: "+1" + phone,
+  		emailVerified: false,   // User verification email must be sent from client-side for this to become true (no server-side function for this currently available)
+  		phoneNumber: "+1" + phone, 
   		password: password,
   		displayName: first + " " + last,
-  		//photoURL: "http://www.example.com/12345678/photo.png",
+  		photoURL: imageUrl
 	};
   	admin.auth().createUser(newUser)
-  	.then(function(userRecord) {
+  	 .then(function(userRecord) {
     	// See the UserRecord reference doc for the contents of userRecord.
     	console.log("Successfully created new user:", userRecord.uid);
     	return res.status(200).json(newUser);
  	 })
-  	.catch(function(error) {
+  	 .catch(function(error) {
     	console.log("Error creating new user:", error);
     	return res.status(400).send(error);
-  	});
+  	 });
 });
 
+/************************************************************************
+* Author: Jacob Nogle ------------------------------------------ 1/2018 *
+* Delete a specified user                                               *
+* Expects uid in query params                                           *
+*************************************************************************/
+app.delete('/users/delete-user/:uid', (req, res) => {
+    const uid = req.params.uid;
+    admin.auth().deleteUser(uid)
+        .then(function() {
+            console.log("Successfully deleted user");
+            return res.status(200).send();
+        })
+        .catch(function(error) {
+            console.log("Error deleting user:", error);
+            return res.status(400).send(error);
+        })
+});
+
+exports.api = functions.https.onRequest(app);
+
+/*******************************************************************
+* Author: Jacob Nogle ------------------------------------- 1/2018 *
+* Function to write newly created users to database                *
+* Triggered by new user creation                                   *
+********************************************************************/
 exports.storeNewUser = functions.auth.user().onCreate(event => {
 	const uid = event.data.uid;
 	const email = event.data.email;
 	const phoneNumber = event.data.phoneNumber;
 	const name = event.data.displayName;
-
+    const photoURL = event.data.photoURL;
+    
 	const coll = db.collection("users");
+    //Add default data 
 	return coll.doc(uid).set({
 		email : email,
 		phoneNumber : phoneNumber,
-		name: name
+		name: name,
+        profile: {
+            isPublic: true,
+            isStaff: false,
+            isCommunityGroupLeader: false,
+            isMinistryTeamLeader: false,
+            isSummerMissionLeader: false
+        },
+        notifications: {
+            ministryTeamUpdates: true,
+            communityGroupUpdates: true,
+            summerMissionUpdates: true
+        },
+        permissions: {
+            isAdmin: false, 
+            isVerified: false 
+        },
+        lastActive: Date.now()
 	})
 	.then(function() {
 		console.log("New user successfully added to database");
@@ -143,4 +196,20 @@ exports.storeNewUser = functions.auth.user().onCreate(event => {
 	});
 });
 
-//Write on user deletion function to remove from database
+/*******************************************************************
+* Author: Jacob Nogle ------------------------------------- 1/2018 *
+* Function to remove a user from the database                      *
+* Triggered by user deletion                                       *
+********************************************************************/
+exports.removeUser = functions.auth.user().onDelete(event => {
+    const uid = event.data.uid;
+    const coll = db.collection("users");
+
+    return coll.doc(uid).delete()
+    .then(function() {
+        console.log("User successfully deleted from database");
+    })
+    .catch(function(error) {
+        console.error("Error deleting user from database")
+    })
+});

@@ -1,5 +1,6 @@
 {
   "projects": {
-    "prod": "cru-central-coast-prod"
+    "prod": "cru-central-coast-prod",
+    "default": "cru-central-coast-prod"
   }
 }
