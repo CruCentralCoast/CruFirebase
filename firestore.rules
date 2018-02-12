@@ -20,6 +20,10 @@ service cloud.firestore {
       return collection == "user";
     }
 
+    function isUserCollection(collection) {
+      return collection == "user";
+    }
+
     match /users/{id} {
       // Allow a request if the user ID in the path is 12345
       // e.g. /projects/projectId/databases/(default)/documents/users/12345
