@@ -20,7 +20,7 @@ service cloud.firestore {
       return collection == "user";
     }
 
-    match /users/{id} {
+    match /users/{userId} {
       // Allow a request if the user ID in the path is 12345
       // e.g. /projects/projectId/databases/(default)/documents/users/12345
       allow read, update: if request.path[6] == request.auth.uid
@@ -36,7 +36,7 @@ service cloud.firestore {
                    && isAdmin();
     }
 
-    match /campuses/{id} {
+    match /campuses/{campusId} {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name', 'location'])
                    && request.resource.data.name is string
@@ -45,9 +45,8 @@ service cloud.firestore {
     }
 
     match /communityGroups/{id} {
-      allow update: if isLeader();
       // Data validation for required fields
-      allow write: if request.resource.data.keys().hasAll(['name', 'type', 'gender'])
+      allow write, update: if request.resource.data.keys().hasAll(['name', 'type', 'gender'])
                    && request.resource.data.name is string
                    && request.resource.data.type is string
                    && request.resource.data.gender is string
@@ -57,7 +56,8 @@ service cloud.firestore {
                       || request.resource.data.type == 'Mixed Ages' || request.resource.data.type == 'Mixed Sexes')
                    && (request.resource.data.gender == 'Male' || request.resource.data.gender == 'Female'
                       || request.resource.data.gender == 'Other')
-                   && isAdmin();
+                   && isAdmin()
+                   && isLeader();
     }
 
     match /events/{id} {
@@ -85,11 +85,69 @@ service cloud.firestore {
                    && isAdmin();
     }
 
+    match /prayerRequests/{id} {
+      // Data validation for required fields
+      allow write: if request.resource.data.keys().hasAll(['fcm_id', 'prayer'])
+                   && request.resource.data.fcm_id is string
+                   && request.resource.data.prayer is string
+                   && isAdmin();
+    }
+
+    match /prayerResponses/{id} {
+      // Data validation for required fields
+      allow write: if request.resource.data.keys().hasAll(['fcm_id', 'response'])
+                   && request.resource.data.fcm_id is string
+                   && request.resource.data.response is string
+                   && isAdmin();
+    }
+
+    match /resourceTags/{id} {
+      // Data validation for required fields
+      allow write: if request.resource.data.keys().hasAll(['title'])
+                   && request.resource.data.title is string
+                   && isAdmin();
+    }
+
+    match /passengers/{id} {
+      // Data validation for required fields
+      allow write: if request.resource.data.keys().hasAll(['name', 'phone', 'direction', 'event'])
+                   && request.resource.data.name is string
+                   && request.resource.data.phone is string
+                   && request.resource.data.direction is string
+                   && request.resource.data.event is string
+                   && (request.resource.data.direction == 'to' || request.resource.data.direction == 'from'
+                      || request.resource.data.direction == 'both')
+                   && isAdmin();
+    }
+
+    match /resources/{id} {
+      // Data validation for required fields
+      allow write: if request.resource.data.keys().hasAll(['url','type','title','author'])
+                   && request.resource.data.url is path
+                   && request.resource.data.type is string
+                   && request.resource.data.title is string
+                   && request.resource.data.author is string
+                   && (request.resource.data.type == 'article' || request.resource.data.type == 'audio'
+                      || request.resource.data.type == 'video')
+                   && isAdmin();
+    }
+
+    match /rides/{id} {
+      // Data validation for required fields
+      allow write: if request.resource.data.keys().hasAll(['event','driverName','driverNumber','fcmId'])
+                   && request.resource.data.event is string
+                   && request.resource.data.driverName is string
+                   && request.resource.data.driverNumber is string
+                   && request.resource.data.fcmId is string
+                   && isAdmin();
+    }
+
     match /{document=**} {
       // This should exclude /users/{userId}
       allow read: if (isSignedIn() && !isUserCollection(request.path[5])) || isAdmin();
-      //allow write: if isAdmin();          // If we have allow write if isAdmin() here it will bypass all
-                                            // the validation rules for specific collections
+      //allow write: if isAdmin();          // If we have allow write if isAdmin() here it will bypass
+                                            // all the validation rules for specific collections.
+                                            // Rather we should add isAdmin() to each specific validation
     }
   }
 }
