@@ -133,7 +133,7 @@ service cloud.firestore {
     match /resources/{id} {	
       // Data validation for required fields	
       allow write: if request.resource.data.keys().hasAll(['url','type','title','author'])	
-                   && request.resource.data.url is path	
+                   && request.resource.data.url is string	
                    && request.resource.data.type is string	
                    && request.resource.data.title is string	
                    && request.resource.data.author is string	
