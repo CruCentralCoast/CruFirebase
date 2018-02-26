@@ -20,7 +20,7 @@ service cloud.firestore {
       return collection == "user";
     }
 
-    match /users/{id} {
+    match /users/{userId} {
       // Allow a request if the user ID in the path is 12345
       // e.g. /projects/projectId/databases/(default)/documents/users/12345
       allow read, update: if request.path[6] == request.auth.uid
@@ -44,8 +44,7 @@ service cloud.firestore {
                    && isAdmin();
     }
 
-    match /communityGroups/{id} {
-      allow update: if isLeader();
+    match /communityGroups/{communityGroupId} {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name', 'type', 'gender'])
                    && request.resource.data.name is string
@@ -57,7 +56,18 @@ service cloud.firestore {
                       || request.resource.data.type == 'Mixed Ages' || request.resource.data.type == 'Mixed Sexes')
                    && (request.resource.data.gender == 'Male' || request.resource.data.gender == 'Female'
                       || request.resource.data.gender == 'Other')
-                   && isAdmin();
+                   && isAdmin()
+      allow update: if request.resource.data.keys().hasAll(['name', 'type', 'gender'])
+                   && request.resource.data.name is string
+                   && request.resource.data.type is string
+                   && request.resource.data.gender is string
+                   && (request.resource.data.type == 'Freshmen' || request.resource.data.type == 'Sophomore'
+                      || request.resource.data.type == 'Junior' || request.resource.data.type == 'Senior'
+                      || request.resource.data.type == 'Graduate' || request.resource.data.type == 'Faculty'
+                      || request.resource.data.type == 'Mixed Ages' || request.resource.data.type == 'Mixed Sexes')
+                   && (request.resource.data.gender == 'Male' || request.resource.data.gender == 'Female'
+                      || request.resource.data.gender == 'Other')
+                   && isLeader();
     }
 
     match /events/{id} {
