@@ -26,7 +26,7 @@ service cloud.firestore {
       allow read, update: if request.path[6] == request.auth.uid
     }
 
-    match /summerMissions/{id} {
+    match /summerMissions/{summerMissionId} {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name', 'location', 'startDate', 'endDate'])
                    && request.resource.data.name is string
@@ -36,7 +36,7 @@ service cloud.firestore {
                    && isAdmin();
     }
 
-    match /campuses/{id} {
+    match /campuses/{campusId} {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name', 'location'])
                    && request.resource.data.name is string
@@ -70,7 +70,7 @@ service cloud.firestore {
                    && isLeader();
     }
 
-    match /events/{id} {
+    match /events/{eventId} {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name', 'startDate', 'endDate'])
                    && request.resource.data.name is string
@@ -80,14 +80,14 @@ service cloud.firestore {
                    && isAdmin();
     }
 
-    match /ministries/{id} {
+    match /ministries/{ministryId} {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name'])
                    && request.resource.data.name is string
                    && isAdmin();
     }
 
-    match /ministryTeams/{id} {
+    match /ministryTeams/{teamId} {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name', 'parentMinistry'])
                    && request.resource.data.name is string
@@ -95,7 +95,7 @@ service cloud.firestore {
                    && isAdmin();
     }
 
-    match /prayerRequests/{id} {	
+    match /prayerRequests/{requestId} {	
       // Data validation for required fields	
       allow write: if request.resource.data.keys().hasAll(['fcm_id', 'prayer'])	
                    && request.resource.data.fcm_id is string	
@@ -103,7 +103,7 @@ service cloud.firestore {
                    && isAdmin();	
     }	
 	
-    match /prayerResponses/{id} {	
+    match /prayerResponses/{responseId} {	
       // Data validation for required fields	
       allow write: if request.resource.data.keys().hasAll(['fcm_id', 'response'])	
                    && request.resource.data.fcm_id is string	
@@ -111,14 +111,14 @@ service cloud.firestore {
                    && isAdmin();	
     }	
 	
-    match /resourceTags/{id} {	
+    match /resourceTags/{tagId} {	
       // Data validation for required fields	
       allow write: if request.resource.data.keys().hasAll(['title'])	
                    && request.resource.data.title is string	
                    && isAdmin();	
     }	
 	
-    match /passengers/{id} {	
+    match /passengers/{passengerId} {	
       // Data validation for required fields	
       allow write: if request.resource.data.keys().hasAll(['name', 'phone', 'direction', 'event'])	
                    && request.resource.data.name is string	
@@ -130,7 +130,7 @@ service cloud.firestore {
                    && isAdmin();	
     }	
 	
-    match /resources/{id} {	
+    match /resources/{resourceId} {	
       // Data validation for required fields	
       allow write: if request.resource.data.keys().hasAll(['url','type','title','author'])	
                    && request.resource.data.url is string	
@@ -142,7 +142,7 @@ service cloud.firestore {
                    && isAdmin();	
     }	
 	
-    match /rides/{id} {	
+    match /rides/{rideId} {	
       // Data validation for required fields	
       allow write: if request.resource.data.keys().hasAll(['event','driverName','driverNumber','fcmId'])	
                    && request.resource.data.event is string	
