@@ -209,6 +209,86 @@ app.delete('/users/delete-user/:uid', (req, res) => {
         })
 });
 
+/************************************************************************
+* Author: Jacob Nogle ------------------------------------------ 3/2018 *
+* Join a community group                                                *
+* Expects the communityGroupId in query params                          *
+*   and the new member's name and phone number in the request body      *
+*************************************************************************/
+app.post('/communityGroups/:id/join', (req, res) => {
+    var communityGroupId = req.params.id;
+    var name = req.body.name;
+    var phone = req.body.phone;
+
+    var leaderInfo = [];
+    var fcmTokens = [];
+    var cgName = "";
+
+    var cgRef = db.collection('communityGroups').doc(communityGroupId);
+    var getName = cgRef.get()
+        .then(doc => {
+            if (!doc.exists) {
+                console.log('No such document!');
+                return res.status(404).send('Community Group not found');
+            } else {
+                cgName = doc.data().name;
+            }
+            var leadersRef = cgRef.collection('leaders');
+            var allLeaders = leadersRef.get()
+                .then(snapshot => {
+                    snapshot.forEach(leaderDoc => {
+                        var userRef = db.collection('users').doc(leaderDoc.id);
+                        var getUser = userRef.get()
+                            .then(doc => {
+                                if (!doc.exists) {
+                                    console.log('No such document!');
+                                    return res.status(404).send('Leader not found in users collection');
+                                } else {
+                                    var leader = doc.data();
+                                    leaderInfo.push({
+                                        name: leader.name,
+                                        phone: leader.phone,
+                                        email: leader.email
+                                    });
+                                    if (leader.fcmId) {
+                                        fcmTokens.push({
+                                            id: leader.fcmId,
+                                            device: leader.deviceType,
+                                            user: doc.id
+                                        });
+                                    } else {
+                                        fcmTokens.push({
+                                            user: doc.id
+                                        });
+                                    }
+                                }
+                                var message = name + " wants to join " + cgName + ". Their phone number is " + phone + ".";
+
+                                notificationUtils.sendToDevice(fcmTokens, "Community Group Join", message, "", function (err) {
+                                    if (err) return res.apiError('failed to send notification', err);
+                                });
+
+                                // ADD MEMBERS, ADD GROUP TO USER
+
+                                return res.status(200).send(leaderInfo);
+                            })
+                            .catch(err => {
+                                console.log('Error getting document', err);
+                                return res.status(400).send(err);
+                            });
+                    })
+                })
+                .catch(err => {
+                    console.log('Error getting document', err);
+                    return res.status(400).send(error);
+                });
+        })
+        .catch(err => {
+            console.log('Error getting document', err);
+            return res.status(400).send(error);
+        });
+});
+
 exports.api = functions.https.onRequest(app);
 
 /*******************************************************************
@@ -267,3 +347,71 @@ exports.removeUser = functions.auth.user().onDelete(event => {
             console.error("Error deleting user from database")
         })
 });
+
+/*******************************************************************
+* Author: Jacob Nogle ------------------------------------- 3/2018 *
+* fcm utility functions                                            *
+********************************************************************/
+var fcmUtils = {
+    createMessage: function (title, body, device) {
+        // iOS requires a certain message format
+        if (device === "iphone") {
+            return {
+                notification: {
+                    body: body,
+                    title: title,
+                    sound: "default"
+                }
+            };
+        } else {
+            return {
+                data: {
+                    message: body,
+                    title: title,
+                    sound: "default"
+                }
+            };
+        }
+    }
+};
+
+/*******************************************************************
+* Author: Jacob Nogle ------------------------------------- 3/2018 *
+* notification utility functions                                   *
+********************************************************************/
+var notificationUtils = {
+    sendToDevice: function (tokens, title, body, subTitle, callback) {
+        if (!Array.isArray(tokens)) return new Error("sendToDevice expects an Array of FCM Tokens as its first parameter");
+
+        var options = {
+            contentAvailable: true,
+            priority: "high"
+        };
+
+        tokens.forEach(function (token) {
+            if (token.id) {
+                var payload = fcmUtils.createMessage(title, body, token.device);
+
+                admin.messaging().sendToDevice(token.id, payload, options).then(function () {
+                    this.addToUserNotifications(title, body, subTitle, true, token.user);
+                    callback();
+                }).catch(function (error) {
+                    this.addToUserNotifications(title, body, subTitle, false, token.user);
+                    callback(error);
+                });
+            } else {
+                this.addToUserNotifications(title, body, subTitle, false, token.user);
+            }
+        }, this);
+    },
+    addToUserNotifications: function (title, body, subTitle, sent, user) {
+        db.collection("userNotifications").add({
+            title: title,
+            body: body,
+            subTitle: subTitle,
+            sent: sent,
+            user: user.toString()
+        })
+    }
+};
+
