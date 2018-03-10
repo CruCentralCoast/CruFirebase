@@ -219,7 +219,8 @@ app.post('/communityGroups/:id/join', (req, res) => {
     var communityGroupId = req.params.id;
     var name = req.body.name;
     var phone = req.body.phone;
-
+    var memberId = req.body.uid;
+    
     var leaderInfo = [];
     var fcmTokens = [];
     var cgName = "";
@@ -268,7 +269,9 @@ app.post('/communityGroups/:id/join', (req, res) => {
                                     if (err) return res.apiError('failed to send notification', err);
                                 });
 
-                                // ADD MEMBERS, ADD GROUP TO USER
+                                // ADD MEMBERS TO GROUP, ADD GROUP TO USER
+                                cgRef.collection('members').doc(memberId).set({});
+                                db.collection('users').doc(memberId).collection('communityGroups').doc(communityGroupId).set({});
 
                                 return res.status(200).send(leaderInfo);
                             })
