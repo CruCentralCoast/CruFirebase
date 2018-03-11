@@ -252,11 +252,8 @@ app.post('/communityGroups/:id/join', (req, res) => {
     var name = req.body.name;
     var phone = req.body.phone;
     var memberId = req.body.uid;
-    
-    var leaderInfo = [];
-    var fcmTokens = [];
-    var cgName = "";
 
+    var cgName = "";
     var cgRef = db.collection('communityGroups').doc(communityGroupId);
     var getName = cgRef.get()
         .then(doc => {
@@ -266,6 +263,7 @@ app.post('/communityGroups/:id/join', (req, res) => {
             } else {
                 cgName = doc.data().name;
             }
+            var message = name + " wants to join " + cgName + ". Their phone number is " + phone + ".";
             var leadersRef = cgRef.collection('leaders');
             var allLeaders = leadersRef.get()
                 .then(snapshot => {
@@ -278,34 +276,22 @@ app.post('/communityGroups/:id/join', (req, res) => {
                                     return res.status(404).send('Leader not found in users collection');
                                 } else {
                                     var leader = doc.data();
-                                    leaderInfo.push({
-                                        name: leader.name,
-                                        phone: leader.phone,
-                                        email: leader.email
-                                    });
+                                    var fcmToken;
                                     if (leader.fcmId) {
-                                        fcmTokens.push({
+                                        fcmToken = {
                                             id: leader.fcmId,
                                             device: leader.deviceType,
                                             user: doc.id
-                                        });
+                                        };
                                     } else {
-                                        fcmTokens.push({
+                                        fcmToken = {
                                             user: doc.id
-                                        });
+                                        };
                                     }
                                 }
-                                var message = name + " wants to join " + cgName + ". Their phone number is " + phone + ".";
-
-                                notificationUtils.sendToDevice(fcmTokens, "Community Group Join", message, "", function (err) {
+                                notificationUtils.sendToOneDevice(fcmToken, "Community Group Join", message, "", function (err) {
                                     if (err) return res.apiError('failed to send notification', err);
                                 });
-
-                                // ADD MEMBERS TO GROUP, ADD GROUP TO USER
-                                cgRef.collection('members').doc(memberId).set({});
-                                db.collection('users').doc(memberId).collection('communityGroups').doc(communityGroupId).set({});
-
-                                return res.status(200).send(leaderInfo);
                             })
                             .catch(err => {
                                 console.log('Error getting document', err);
@@ -317,6 +303,11 @@ app.post('/communityGroups/:id/join', (req, res) => {
                     console.log('Error getting document', err);
                     return res.status(400).send(error);
                 });
+            // ADD MEMBERS TO GROUP, ADD GROUP TO USER
+            cgRef.collection('members').doc(memberId).set({});
+            db.collection('users').doc(memberId).collection('communityGroups').doc(communityGroupId).set({});
+
+            return res.status(200).send("Leaders notified of join");
         })
         .catch(err => {
             console.log('Error getting document', err);
@@ -438,6 +429,26 @@ var notificationUtils = {
                 this.addToUserNotifications(title, body, subTitle, false, token.user);
             }
         }, this);
+    },
+    sendToOneDevice: function (token, title, body, subTitle, callback) {
+        var options = {
+            contentAvailable: true,
+            priority: "high"
+        };
+
+        if (token.id) {
+            var payload = fcmUtils.createMessage(title, body, token.device);
+
+            admin.messaging().sendToDevice(token.id, payload, options).then(function () {
+                this.addToUserNotifications(title, body, subTitle, true, token.user);
+                callback();
+            }).catch(function (error) {
+                this.addToUserNotifications(title, body, subTitle, false, token.user);
+                callback(error);
+            });
+        } else {
+            this.addToUserNotifications(title, body, subTitle, false, token.user);
+        }
     },
     addToUserNotifications: function (title, body, subTitle, sent, user) {
         db.collection("userNotifications").add({
