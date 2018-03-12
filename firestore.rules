@@ -72,11 +72,12 @@ service cloud.firestore {
 
     match /events/{eventId} {
       // Data validation for required fields
-      allow write: if request.resource.data.keys().hasAll(['name', 'startDate', 'endDate'])
+      allow write: if request.resource.data.keys().hasAll(['name', 'startDate', 'endDate', 'permissionGroups'])
                    && request.resource.data.name is string
                    && request.resource.data.startDate is timestamp
                    && request.resource.data.endDate is timestamp
                    && request.resource.data.name.size() <= 35
+                   && request.resource.data.permissionGroups is list
                    && isAdmin();
     }
 

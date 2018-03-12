@@ -11,11 +11,12 @@ var testResourceObj = {
            }
            match /events/{id} {
             // Data validation for required fields
-            allow write: if request.resource.data.keys().hasAll(['name', 'startDate', 'endDate'])
+            allow write: if request.resource.data.keys().hasAll(['name', 'startDate', 'endDate', 'permissionGroups'])
                          && request.resource.data.name is string
                          && request.resource.data.startDate is timestamp
                          && request.resource.data.endDate is timestamp
                          && request.resource.data.name.size() <= 35
+                         && request.resource.data.permissionGroups is list
                          && isAdmin();
           }
         }
@@ -38,7 +39,8 @@ var testResourceObj = {
                                 data: {
                                     name: "name",
                                     startDate: "0001-01-01T00:00:00.511Z",
-                                    endDate: "0001-01-01T00:00:00.511Z"
+                                    endDate: "0001-01-01T00:00:00.511Z",
+                                    permissionGroups: ["group1", "group2"]
                                 }
                             },
                             path: "/databases/(default)/documents/events/123",

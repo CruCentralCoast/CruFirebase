@@ -78,12 +78,12 @@ app.post('/users/register-user', (req, res) => {
         });
 });
 
-/************************************************************************
-* Author: Jacob Nogle ------------------------------------------ 2/2018 *
-* Add additional user info                                              *
-* Expects gender, first/last name, phone number, a list of campus ids   *
-*   and ministry ids, and photo url in request body                     *                                *
-*************************************************************************/
+/*****************************************************************************     
+* Author: Jacob Nogle ------------------------------------------ 2/2018      *
+* Add additional user info                                                   *
+* Expects gender, first/last name, phone number, a list of campus references *
+*   and ministry references, and photo url in request body                   *                                *
+******************************************************************************/
 app.post('/users/add-user-info/:uid', (req, res) => {
     var uid = req.params.uid;
 
@@ -202,13 +202,6 @@ app.post('/users/add-user-info/:uid', (req, res) => {
 
     const coll = db.collection("users");
 
-    campuses.forEach(function(campusId) {
-        coll.doc(uid).collection("campuses").doc(campusId).set({});
-    })
-    ministries.forEach(function(ministryId) {
-        coll.doc(uid).collection("ministries").doc(ministryId).set({});
-    })
-
     coll.doc(uid).update({
         "name": {
             "first": first,
@@ -216,7 +209,9 @@ app.post('/users/add-user-info/:uid', (req, res) => {
         },
         "gender": gender,
         "phone": phone,
-        "profile.imageLink": imageUrl
+        "profile.imageLink": imageUrl,
+        "campuses": campuses,
+        "ministries": ministries
     })
         .then(function () {
             console.log("New user info successfully added to database");
