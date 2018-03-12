@@ -216,70 +216,78 @@ app.delete('/users/delete-user/:uid', (req, res) => {
 *   and the new member's name and phone number in the request body      *
 *************************************************************************/
 app.post('/communityGroups/:id/join', (req, res) => {
-    var communityGroupId = req.params.id;
-    var name = req.body.name;
-    var phone = req.body.phone;
-    var memberId = req.body.uid;
+    const tokenId = req.get('Authorization').split('Bearer ')[1];
 
-    var cgName = "";
-    var cgRef = db.collection('communityGroups').doc(communityGroupId);
-    var getName = cgRef.get()
-        .then(doc => {
-            if (!doc.exists) {
-                console.log('No such document!');
-                return res.status(404).send('Community Group not found');
-            } else {
-                cgName = doc.data().name;
-            }
-            var message = name + " wants to join " + cgName + ". Their phone number is " + phone + ".";
-            var leadersRef = cgRef.collection('leaders');
-            var allLeaders = leadersRef.get()
-                .then(snapshot => {
-                    snapshot.forEach(leaderDoc => {
-                        var userRef = db.collection('users').doc(leaderDoc.id);
-                        var getUser = userRef.get()
-                            .then(doc => {
-                                if (!doc.exists) {
-                                    console.log('No such document!');
-                                    return res.status(404).send('Leader not found in users collection');
-                                } else {
-                                    var leader = doc.data();
-                                    var fcmToken;
-                                    if (leader.fcmId) {
-                                        fcmToken = {
-                                            id: leader.fcmId,
-                                            device: leader.deviceType,
-                                            user: doc.id
-                                        };
-                                    } else {
-                                        fcmToken = {
-                                            user: doc.id
-                                        };
-                                    }
-                                }
-                                notificationUtils.sendToOneDevice(fcmToken, "Community Group Join", message, "", function (err) {
-                                    if (err) return res.apiError('failed to send notification', err);
-                                });
+    return admin.auth().verifyIdToken(tokenId)
+        .then((decoded) => {
+            var communityGroupId = req.params.id;
+            var name = req.body.name;
+            var phone = req.body.phone;
+            var memberId = req.body.uid;
+
+            var cgName = "";
+            var cgRef = db.collection('communityGroups').doc(communityGroupId);
+            var getName = cgRef.get()
+                .then(doc => {
+                    if (!doc.exists) {
+                        console.log('No such document!');
+                        return res.status(404).send('Community Group not found');
+                    } else {
+                        cgName = doc.data().name;
+                    }
+                    var message = name + " wants to join " + cgName + ". Their phone number is " + phone + ".";
+                    var leadersRef = cgRef.collection('leaders');
+                    var allLeaders = leadersRef.get()
+                        .then(snapshot => {
+                            snapshot.forEach(leaderDoc => {
+                                var userRef = db.collection('users').doc(leaderDoc.id);
+                                var getUser = userRef.get()
+                                    .then(doc => {
+                                        if (!doc.exists) {
+                                            console.log('No such document!');
+                                            return res.status(404).send('Leader not found in users collection');
+                                        } else {
+                                            var leader = doc.data();
+                                            var fcmToken;
+                                            if (leader.fcmId) {
+                                                fcmToken = {
+                                                    id: leader.fcmId,
+                                                    device: leader.deviceType,
+                                                    user: doc.id
+                                                };
+                                            } else {
+                                                fcmToken = {
+                                                    user: doc.id
+                                                };
+                                            }
+                                        }
+                                        notificationUtils.sendToOneDevice(fcmToken, "Community Group Join", message, "", function (err) {
+                                            if (err) return res.apiError('failed to send notification', err);
+                                        });
+                                    })
+                                    .catch(err => {
+                                        console.log('Error getting document', err);
+                                        return res.status(400).send(err);
+                                    });
                             })
-                            .catch(err => {
-                                console.log('Error getting document', err);
-                                return res.status(400).send(err);
-                            });
-                    })
+                        })
+                        .catch(err => {
+                            console.log('Error getting document', err);
+                            return res.status(400).send(error);
+                        });
+                    // ADD MEMBERS TO GROUP, ADD GROUP TO USER
+                    cgRef.collection('members').doc(memberId).set({});
+                    db.collection('users').doc(memberId).collection('communityGroups').doc(communityGroupId).set({});
+
+                    return res.status(200).send("Leaders notified of join");
                 })
                 .catch(err => {
                     console.log('Error getting document', err);
                     return res.status(400).send(error);
                 });
-            // ADD MEMBERS TO GROUP, ADD GROUP TO USER
-            cgRef.collection('members').doc(memberId).set({});
-            db.collection('users').doc(memberId).collection('communityGroups').doc(communityGroupId).set({});
-
-            return res.status(200).send("Leaders notified of join");
         })
-        .catch(err => {
-            console.log('Error getting document', err);
-            return res.status(400).send(error);
+        .catch((err) => {
+            res.status(401).send(err);
         });
 });
 
