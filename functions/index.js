@@ -16,41 +16,7 @@ const db = admin.firestore();
 app.post('/users/register-user', (req, res) => {
     var password = req.body.password;
     var email = req.body.email;
-    var first = req.body.first;
-    var last = req.body.last;
-    var phone = req.body.phone;
-    var imageUrl = req.body.imageLink;  // can get this after uploading an image to google cloud storage from client-side
 
-    if (typeof phone === 'undefined') {
-        var json_res = {
-            "message": "Validation failed",
-            "name": "ValidationError",
-            "errors": {
-                "name": {
-                    "message": "Path `phone` is required.",
-                    "name": "ValidatorError",
-                    "path": "phone",
-                    "type": "required"
-                }
-            }
-        }
-        return res.status(400).json(json_res);
-    }
-    if (isNaN(phone) || phone.length !== 10) {
-        var json_res = {
-            "message": "Validation failed",
-            "name": "ValidationError",
-            "errors": {
-                "name": {
-                    "message": "Phone number must only include numbers, Phone number must be 10 digits",
-                    "name": "ValidatorError",
-                    "path": "phone",
-                    "type": "format"
-                }
-            }
-        }
-        return res.status(400).json(json_res);
-    }
     if (typeof password === 'undefined' || password.length === 0) {
         var json_res = {
             "message": "Validation failed",
@@ -96,6 +62,97 @@ app.post('/users/register-user', (req, res) => {
         }
         return res.status(400).json(json_res);
     }
+    const newUser = {
+        email: email,
+        password: password,
+    };
+    admin.auth().createUser(newUser)
+        .then(function (userRecord) {
+            // See the UserRecord reference doc for the contents of userRecord.
+            console.log("Successfully created new user:", userRecord.uid);
+            return res.status(200).json(newUser);
+        })
+        .catch(function (error) {
+            console.log("Error creating new user:", error);
+            return res.status(400).send(error);
+        });
+});
+
+/************************************************************************
+* Author: Jacob Nogle ------------------------------------------ 2/2018 *
+* Add additional user info                                              *
+* Expects gender, first/last name, phone number, and photo url          *
+*  in request body                                                      *
+*************************************************************************/
+app.post('/users/add-user-info/:uid', (req, res) => {
+    var uid = req.params.uid;
+
+    var first = req.body.first;
+    var last = req.body.last;
+    var phone = req.body.phone;
+    var imageUrl = req.body.imageLink;
+    var gender = req.body.gender;
+
+    if (typeof gender === 'undefined' || gender.length === 0) {
+        var json_res = {
+            "message": "Validation failed",
+            "name": "ValidationError",
+            "errors": {
+                "name": {
+                    "message": "Path `gender` is required.",
+                    "name": "ValidatorError",
+                    "path": "gender",
+                    "type": "required"
+                }
+            }
+        }
+        return res.status(400).json(json_res);
+    }
+    if (!['Unknown', 'Male', 'Female', 'Not Applicable'].includes(gender)) {
+        var json_res = {
+            "message": "Validation failed",
+            "name": "ValidationError",
+            "errors": {
+                "name": {
+                    "message": "Path `gender` must be  one of the following: Male, Female, Unknown, Not Applicable",
+                    "name": "ValidatorError",
+                    "path": "gender",
+                    "type": "option"
+                }
+            }
+        }
+        return res.status(400).json(json_res);
+    }
+    if (typeof phone === 'undefined' || phone.length === 0) {
+        var json_res = {
+            "message": "Validation failed",
+            "name": "ValidationError",
+            "errors": {
+                "name": {
+                    "message": "Path `phone` is required.",
+                    "name": "ValidatorError",
+                    "path": "phone",
+                    "type": "required"
+                }
+            }
+        }
+        return res.status(400).json(json_res);
+    }
+    if (isNaN(phone) || phone.length !== 10) {
+        var json_res = {
+            "message": "Validation failed",
+            "name": "ValidationError",
+            "errors": {
+                "name": {
+                    "message": "Phone number must only include numbers, Phone number must be 10 digits",
+                    "name": "ValidatorError",
+                    "path": "phone",
+                    "type": "format"
+                }
+            }
+        }
+        return res.status(400).json(json_res);
+    }
     if (typeof first === 'undefined' || typeof last === 'undefined'
         || first.length === 0 || last.length === 0) {
         var json_res = {
@@ -112,22 +169,24 @@ app.post('/users/register-user', (req, res) => {
         }
         return res.status(400).json(json_res);
     }
-    const newUser = {
-        email: email,
-        emailVerified: false,   // User verification email must be sent from client-side for this to become true (no server-side function for this currently available)
-        phoneNumber: "+1" + phone,
-        password: password,
-        displayName: first + " " + last,
-        photoURL: imageUrl
-    };
-    admin.auth().createUser(newUser)
-        .then(function (userRecord) {
-            // See the UserRecord reference doc for the contents of userRecord.
-            console.log("Successfully created new user:", userRecord.uid);
-            return res.status(200).json(newUser);
+
+    const coll = db.collection("users");
+
+    return coll.doc(uid).update({
+        "name": {
+            "first": first,
+            "last": last
+        },
+        "gender": gender,
+        "phone": phone,
+        "profile.imageLink": imageUrl
+    })
+        .then(function () {
+            console.log("New user info successfully added to database");
+            return res.status(200).send();
         })
         .catch(function (error) {
-            console.log("Error creating new user:", error);
+            console.error("Error adding new user data to database: ", error);
             return res.status(400).send(error);
         });
 });
@@ -160,23 +219,17 @@ exports.api = functions.https.onRequest(app);
 exports.storeNewUser = functions.auth.user().onCreate(event => {
     const uid = event.data.uid;
     const email = event.data.email;
-    const phoneNumber = event.data.phoneNumber;
-    const name = event.data.displayName;
-    const photoURL = event.data.photoURL;
 
     const coll = db.collection("users");
     //Add default data 
     return coll.doc(uid).set({
         email: email,
-        phoneNumber: phoneNumber,
-        name: name,
         profile: {
-            imageLink: photoURL,
             isPublic: true,
             isStaff: false,
             isCommunityGroupLeader: false,
             isMinistryTeamLeader: false,
-            isSummerMissionLeader: false
+            isSummerMissionLeader: false,
         },
         notifications: {
             ministryTeamUpdates: true,
@@ -184,7 +237,7 @@ exports.storeNewUser = functions.auth.user().onCreate(event => {
             summerMissionUpdates: true
         },
         permissions: {
-            isAdmin: false,    //CHANGE THIS TO ADD NEW DOC IN PERMISSIONS COLLECTION
+            isAdmin: false,
             isVerified: false
         },
         lastActive: Date.now()
