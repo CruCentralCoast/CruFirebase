@@ -81,8 +81,8 @@ app.post('/users/register-user', (req, res) => {
 /************************************************************************
 * Author: Jacob Nogle ------------------------------------------ 2/2018 *
 * Add additional user info                                              *
-* Expects gender, first/last name, phone number, and photo url          *
-*  in request body                                                      *
+* Expects gender, first/last name, phone number, a list of campus ids   *
+*   and ministry ids, and photo url in request body                     *                                *
 *************************************************************************/
 app.post('/users/add-user-info/:uid', (req, res) => {
     var uid = req.params.uid;
@@ -92,6 +92,8 @@ app.post('/users/add-user-info/:uid', (req, res) => {
     var phone = req.body.phone;
     var imageUrl = req.body.imageLink;
     var gender = req.body.gender;
+    var campuses = req.body.campuses;
+    var ministries = req.body.ministries;
 
     if (typeof gender === 'undefined' || gender.length === 0) {
         var json_res = {
@@ -169,10 +171,45 @@ app.post('/users/add-user-info/:uid', (req, res) => {
         }
         return res.status(400).json(json_res);
     }
+    if(typeof campuses === 'undefined' || campuses.length === 0) {
+        var json_res = {
+            "message": "Validation failed",
+            "name": "ValidationError",
+            "errors": {
+                "name": {
+                    "message": "User must be a member of at least one campus.",
+                    "name": "ValidatorError",
+                    "path": "campuses",
+                    "type": "required"
+                }
+            }
+        }
+    }
+    if(typeof ministries === 'undefined' || ministries.length === 0) {
+        var json_res = {
+            "message": "Validation failed",
+            "name": "ValidationError",
+            "errors": {
+                "name": {
+                    "message": "User must be a member of at least one ministry.",
+                    "name": "ValidatorError",
+                    "path": "ministries",
+                    "type": "required"
+                }
+            }
+        }
+    }
 
     const coll = db.collection("users");
 
-    return coll.doc(uid).update({
+    campuses.forEach(function(campusId) {
+        coll.doc(uid).collection("campuses").doc(campusId).set({});
+    })
+    ministries.forEach(function(ministryId) {
+        coll.doc(uid).collection("ministries").doc(ministryId).set({});
+    })
+
+    coll.doc(uid).update({
         "name": {
             "first": first,
             "last": last
