@@ -225,66 +225,87 @@ app.post('/communityGroups/:id/join', (req, res) => {
             var phone = req.body.phone;
             var memberId = req.body.uid;
 
-            var cgName = "";
             var cgRef = db.collection('communityGroups').doc(communityGroupId);
-            var getName = cgRef.get()
+            var memberRef = db.collection('users').doc(memberId);
+            var cgMembers;
+            var memberCgs;
+
+            var getMember = memberRef.get().then(function (doc) {
+                if (doc.exists) {
+                    if (doc.data().communityGroups) {
+                        memberCgs = doc.data().communityGroups;
+                        if(!memberCgs.includes(cgRef)) {
+                            memberCgs.push(cgRef);
+                        } else {
+                            console.log("User already a member of this community group");
+                            return res.status(200).send("Already joined");
+                        }
+                    } else {
+                        memberCgs = [cgRef];
+                    }
+                    var updateCommunityGroups = memberRef.update({ communityGroups: memberCgs });
+                } else {
+                    console.log("No such document!");
+                    return res.status(404).send('User not found');
+                }
+            }).catch(function (error) {
+                console.log("Error getting document:", error);
+                return res.status(400).send(error);
+            });
+
+            var getGroup = cgRef.get()
                 .then(doc => {
                     if (!doc.exists) {
                         console.log('No such document!');
                         return res.status(404).send('Community Group not found');
                     } else {
-                        cgName = doc.data().name;
+                        var cgName = doc.data().name;
+                        var leaders = doc.data().leaders;
+                        if (doc.data().members) {
+                            cgMembers = doc.data().members;
+                            cgMembers.push(memberRef);
+                        } else {
+                            cgMembers = [memberRef];
+                        }
+                        var updateMembers = cgRef.update({ members: cgMembers });
                     }
                     var message = name + " wants to join " + cgName + ". Their phone number is " + phone + ".";
-                    var leadersRef = cgRef.collection('leaders');
-                    var allLeaders = leadersRef.get()
-                        .then(snapshot => {
-                            snapshot.forEach(leaderDoc => {
-                                var userRef = db.collection('users').doc(leaderDoc.id);
-                                var getUser = userRef.get()
-                                    .then(doc => {
-                                        if (!doc.exists) {
-                                            console.log('No such document!');
-                                            return res.status(404).send('Leader not found in users collection');
-                                        } else {
-                                            var leader = doc.data();
-                                            var fcmToken;
-                                            if (leader.fcmId) {
-                                                fcmToken = {
-                                                    id: leader.fcmId,
-                                                    device: leader.deviceType,
-                                                    user: doc.id
-                                                };
-                                            } else {
-                                                fcmToken = {
-                                                    user: doc.id
-                                                };
-                                            }
-                                        }
-                                        notificationUtils.sendToOneDevice(fcmToken, "Community Group Join", message, "", function (err) {
-                                            if (err) return res.apiError('failed to send notification', err);
-                                        });
-                                    })
-                                    .catch(err => {
-                                        console.log('Error getting document', err);
-                                        return res.status(400).send(err);
-                                    });
+                    leaders.forEach(leaderRef => {
+                        var getUser = leaderRef.get()
+                            .then(doc => {
+                                if (!doc.exists) {
+                                    console.log('No such document!');
+                                    return res.status(404).send('Leader not found in users collection');
+                                } else {
+                                    var leader = doc.data();
+                                    var fcmToken;
+                                    if (leader.fcmId) {
+                                        fcmToken = {
+                                            id: leader.fcmId,
+                                            device: leader.deviceType,
+                                            user: doc.id
+                                        };
+                                    } else {
+                                        fcmToken = {
+                                            user: doc.id
+                                        };
+                                    }
+                                }
+                                notificationUtils.sendToOneDevice(fcmToken, "Community Group Join", message, "", function (err) {
+                                    if (err) return res.apiError('failed to send notification', err);
+                                });
                             })
-                        })
-                        .catch(err => {
-                            console.log('Error getting document', err);
-                            return res.status(400).send(error);
-                        });
-                    // ADD MEMBERS TO GROUP, ADD GROUP TO USER
-                    cgRef.collection('members').doc(memberId).set({});
-                    db.collection('users').doc(memberId).collection('communityGroups').doc(communityGroupId).set({});
-
-                    return res.status(200).send("Leaders notified of join");
+                            .catch(err => {
+                                console.log('Error getting document', err);
+                                return res.status(400).send(err);
+                            });
+                    })
                 })
                 .catch(err => {
                     console.log('Error getting document', err);
-                    return res.status(400).send(error);
+                    return res.status(400).send(err);
                 });
+            return res.status(200).send("Leaders notified of join");
         })
         .catch((err) => {
             res.status(401).send(err);
