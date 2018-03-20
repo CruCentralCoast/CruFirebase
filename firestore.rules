@@ -72,11 +72,12 @@ service cloud.firestore {
 
     match /events/{eventId} {
       // Data validation for required fields
-      allow write: if request.resource.data.keys().hasAll(['name', 'startDate', 'endDate'])
+      allow write: if request.resource.data.keys().hasAll(['name', 'startDate', 'endDate', 'permissionGroups'])
                    && request.resource.data.name is string
                    && request.resource.data.startDate is timestamp
                    && request.resource.data.endDate is timestamp
                    && request.resource.data.name.size() <= 35
+                   && request.resource.data.permissionGroups is list
                    && isAdmin();
     }
 
@@ -111,25 +112,6 @@ service cloud.firestore {
                    && isAdmin();	
     }	
 	
-    match /resourceTags/{tagId} {	
-      // Data validation for required fields	
-      allow write: if request.resource.data.keys().hasAll(['title'])	
-                   && request.resource.data.title is string	
-                   && isAdmin();	
-    }	
-	
-    match /passengers/{passengerId} {	
-      // Data validation for required fields	
-      allow write: if request.resource.data.keys().hasAll(['name', 'phone', 'direction', 'event'])	
-                   && request.resource.data.name is string	
-                   && request.resource.data.phone is string	
-                   && request.resource.data.direction is string	
-                   && request.resource.data.event is string	
-                   && (request.resource.data.direction == 'to' || request.resource.data.direction == 'from'	
-                      || request.resource.data.direction == 'both')	
-                   && isAdmin();	
-    }	
-	
     match /resources/{resourceId} {	
       // Data validation for required fields	
       allow write: if request.resource.data.keys().hasAll(['url','type','title','author'])	
@@ -139,6 +121,31 @@ service cloud.firestore {
                    && request.resource.data.author is string	
                    && (request.resource.data.type == 'article' || request.resource.data.type == 'audio'	
                       || request.resource.data.type == 'video')	
+                   && isAdmin();	
+    }	
+
+    match /resourceTags/{tagId} {	
+      // Data validation for required fields	
+      allow write: if request.resource.data.keys().hasAll(['title'])	
+                   && request.resource.data.title is string	
+                   && isAdmin();	
+    }	
+	
+    match /resourcePages/{pageId} {
+      allow write: if request.resource.data.keys().hasAll(['title'])	
+                   && request.resource.data.title is string	
+                   && isAdmin();
+    }
+
+    match /passengers/{passengerId} {	
+      // Data validation for required fields	
+      allow write: if request.resource.data.keys().hasAll(['name', 'phone', 'direction', 'event'])	
+                   && request.resource.data.name is string	
+                   && request.resource.data.phone is string	
+                   && request.resource.data.direction is string	
+                   && request.resource.data.event is string	
+                   && (request.resource.data.direction == 'to' || request.resource.data.direction == 'from'	
+                      || request.resource.data.direction == 'both')	
                    && isAdmin();	
     }	
 	
