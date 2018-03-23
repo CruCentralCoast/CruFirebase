@@ -12,7 +12,7 @@ var testResourceObj = {
            match /rides/{id} {	
             // Data validation for required fields	
             allow write: if request.resource.data.keys().hasAll(['event','driverName','driverNumber','fcmId'])	
-                         && request.resource.data.event is string	
+                         && request.resource.data.event is path	
                          && request.resource.data.driverName is string	
                          && request.resource.data.driverNumber is string	
                          && request.resource.data.fcmId is string	
@@ -36,7 +36,7 @@ var testResourceObj = {
               },
               resource: {
                 data: {
-                  event: "test_event",
+                  event: "/databases/(default)/documents/events/321",
                   driverName: "John Doe",
                   driverNumber: "1111111111",
                   fcmId: "test_id"

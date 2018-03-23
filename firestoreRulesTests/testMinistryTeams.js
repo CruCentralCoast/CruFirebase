@@ -13,7 +13,7 @@ var testResourceObj = {
             // Data validation for required fields
             allow write: if request.resource.data.keys().hasAll(['name', 'parentMinistry'])
                          && request.resource.data.name is string
-                         && request.resource.data.parentMinistry is string
+                         && request.resource.data.parentMinistry is path
                          && isAdmin();
           }
         }
@@ -35,7 +35,7 @@ var testResourceObj = {
                             resource: {
                                 data: {
                                     name: "name",
-                                    parentMinistry: "Epic"
+                                    parentMinistry: "/databases/(default)/documents/ministries/321"
                                 }
                             },
                             path: "/databases/(default)/documents/ministryTeams/123",

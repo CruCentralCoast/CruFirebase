@@ -92,7 +92,7 @@ service cloud.firestore {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name', 'parentMinistry'])
                    && request.resource.data.name is string
-                   && request.resource.data.parentMinistry is string
+                   && request.resource.data.parentMinistry is path
                    && isAdmin();
     }
 
@@ -143,7 +143,7 @@ service cloud.firestore {
                    && request.resource.data.name is string	
                    && request.resource.data.phone is string	
                    && request.resource.data.direction is string	
-                   && request.resource.data.event is string	
+                   && request.resource.data.event is path	
                    && (request.resource.data.direction == 'to' || request.resource.data.direction == 'from'	
                       || request.resource.data.direction == 'both')	
                    && isAdmin();	
@@ -152,7 +152,7 @@ service cloud.firestore {
     match /rides/{rideId} {	
       // Data validation for required fields	
       allow write: if request.resource.data.keys().hasAll(['event','driverName','driverNumber','fcmId'])	
-                   && request.resource.data.event is string	
+                   && request.resource.data.event is path	
                    && request.resource.data.driverName is string	
                    && request.resource.data.driverNumber is string	
                    && request.resource.data.fcmId is string	

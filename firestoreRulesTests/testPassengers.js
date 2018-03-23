@@ -15,7 +15,7 @@ var testResourceObj = {
                          && request.resource.data.name is string	
                          && request.resource.data.phone is string	
                          && request.resource.data.direction is string	
-                         && request.resource.data.event is string	
+                         && request.resource.data.event is path	
                          && (request.resource.data.direction == 'to' || request.resource.data.direction == 'from'	
                             || request.resource.data.direction == 'both')	
                          && isAdmin();	
@@ -41,7 +41,7 @@ var testResourceObj = {
                   name: "test_name",
                   phone: "11111111111",
                   direction: "both",
-                  event: "test_event"
+                  event: "/databases/(default)/documents/events/321"
                 }
               },
               path: "/databases/(default)/documents/passengers/123",
