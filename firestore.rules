@@ -5,7 +5,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return get(/databases/$(database)/documents/permissionGroups/admin).data[request.auth.uid];
+      return isSignedIn() && get(/databases/$(database)/documents/permissionGroups/admin).data[request.auth.uid];
     }
 
     function isEventAdmin() {
@@ -20,13 +20,13 @@ service cloud.firestore {
       return collection == "user";
     }
 
-    match /users/{userId} {
+    match /users/{id} {
       // Allow a request if the user ID in the path is 12345
       // e.g. /projects/projectId/databases/(default)/documents/users/12345
       allow read, update: if request.path[6] == request.auth.uid
     }
 
-    match /summerMissions/{summerMissionId} {
+    match /summerMissions/{id} {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name', 'location', 'startDate', 'endDate'])
                    && request.resource.data.name is string
@@ -36,7 +36,7 @@ service cloud.firestore {
                    && isAdmin();
     }
 
-    match /campuses/{campusId} {
+    match /campuses/{id} {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name', 'location'])
                    && request.resource.data.name is string
@@ -44,7 +44,8 @@ service cloud.firestore {
                    && isAdmin();
     }
 
-    match /communityGroups/{communityGroupId} {
+    match /communityGroups/{id} {
+      allow update: if isLeader();
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name', 'type', 'gender'])
                    && request.resource.data.name is string
@@ -56,115 +57,41 @@ service cloud.firestore {
                       || request.resource.data.type == 'Mixed Ages' || request.resource.data.type == 'Mixed Sexes')
                    && (request.resource.data.gender == 'Male' || request.resource.data.gender == 'Female'
                       || request.resource.data.gender == 'Other')
-                   && isAdmin()
-      allow update: if request.resource.data.keys().hasAll(['name', 'type', 'gender'])
-                   && request.resource.data.name is string
-                   && request.resource.data.type is string
-                   && request.resource.data.gender is string
-                   && (request.resource.data.type == 'Freshmen' || request.resource.data.type == 'Sophomore'
-                      || request.resource.data.type == 'Junior' || request.resource.data.type == 'Senior'
-                      || request.resource.data.type == 'Graduate' || request.resource.data.type == 'Faculty'
-                      || request.resource.data.type == 'Mixed Ages' || request.resource.data.type == 'Mixed Sexes')
-                   && (request.resource.data.gender == 'Male' || request.resource.data.gender == 'Female'
-                      || request.resource.data.gender == 'Other')
-                   && isLeader();
+                   && isAdmin();
     }
 
-    match /events/{eventId} {
+    match /events/{id} {
       // Data validation for required fields
-      allow write: if request.resource.data.keys().hasAll(['name', 'startDate', 'endDate', 'permissionGroups'])
+      allow write: if request.resource.data.keys().hasAll(['name', 'startDate', 'endDate'])
                    && request.resource.data.name is string
                    && request.resource.data.startDate is timestamp
                    && request.resource.data.endDate is timestamp
                    && request.resource.data.name.size() <= 35
-                   && request.resource.data.permissionGroups is list
-                   && isAdmin();
+                   && (isAdmin() || isEventAdmin());
     }
 
-    match /ministries/{ministryId} {
+    match /ministries/{id} {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name'])
                    && request.resource.data.name is string
                    && isAdmin();
     }
 
-    match /ministryTeams/{teamId} {
+    match /ministryTeams/{id} {
       // Data validation for required fields
       allow write: if request.resource.data.keys().hasAll(['name', 'parentMinistry'])
                    && request.resource.data.name is string
-                   && request.resource.data.parentMinistry is path
+                   && request.resource.data.parentMinistry is string
                    && isAdmin();
-    }
-
-    match /prayerRequests/{requestId} {	
-      // Data validation for required fields	
-      allow write: if request.resource.data.keys().hasAll(['fcm_id', 'prayer'])	
-                   && request.resource.data.fcm_id is string	
-                   && request.resource.data.prayer is string	
-                   && isAdmin();	
-    }	
-	
-    match /prayerResponses/{responseId} {	
-      // Data validation for required fields	
-      allow write: if request.resource.data.keys().hasAll(['fcm_id', 'response'])	
-                   && request.resource.data.fcm_id is string	
-                   && request.resource.data.response is string	
-                   && isAdmin();	
-    }	
-	
-    match /resources/{resourceId} {	
-      // Data validation for required fields	
-      allow write: if request.resource.data.keys().hasAll(['url','type','title','author'])	
-                   && request.resource.data.url is string	
-                   && request.resource.data.type is string	
-                   && request.resource.data.title is string	
-                   && request.resource.data.author is string	
-                   && (request.resource.data.type == 'article' || request.resource.data.type == 'audio'	
-                      || request.resource.data.type == 'video')	
-                   && isAdmin();	
-    }	
-
-    match /resourceTags/{tagId} {	
-      // Data validation for required fields	
-      allow write: if request.resource.data.keys().hasAll(['title'])	
-                   && request.resource.data.title is string	
-                   && isAdmin();	
-    }	
-	
-    match /resourcePages/{pageId} {
-      allow write: if request.resource.data.keys().hasAll(['title'])	
-                   && request.resource.data.title is string	
-                   && isAdmin();
-    }
-
-    match /passengers/{passengerId} {	
-      // Data validation for required fields	
-      allow write: if request.resource.data.keys().hasAll(['name', 'phone', 'direction', 'event'])	
-                   && request.resource.data.name is string	
-                   && request.resource.data.phone is string	
-                   && request.resource.data.direction is string	
-                   && request.resource.data.event is path	
-                   && (request.resource.data.direction == 'to' || request.resource.data.direction == 'from'	
-                      || request.resource.data.direction == 'both')	
-                   && isAdmin();	
-    }	
-	
-    match /rides/{rideId} {	
-      // Data validation for required fields	
-      allow write: if request.resource.data.keys().hasAll(['event','driverName','driverNumber','fcmId'])	
-                   && request.resource.data.event is path	
-                   && request.resource.data.driverName is string	
-                   && request.resource.data.driverNumber is string	
-                   && request.resource.data.fcmId is string	
-                   && isAdmin();	
     }
 
     match /{document=**} {
       // This should exclude /users/{userId}
       allow read: if (isSignedIn() && !isUserCollection(request.path[5])) || isAdmin();
+      allow list: if true;
+      allow get: if true;
       //allow write: if isAdmin();          // If we have allow write if isAdmin() here it will bypass all
                                             // the validation rules for specific collections
-                                            // Rather we should write it in each individual model rule
     }
   }
 }
