@@ -3,7 +3,7 @@ const admin = require('firebase-admin');
 const express = require('express');
 
 const app = express();
-admin.initializeApp(functions.config().firebase);
+admin.initializeApp();
 
 const db = admin.firestore();
 
@@ -351,9 +351,10 @@ exports.api = functions.https.onRequest(app);
 * Function to write newly created users to database                *
 * Triggered by new user creation                                   *
 ********************************************************************/
-exports.storeNewUser = functions.auth.user().onCreate(event => {
-    const uid = event.data.uid;
-    const email = event.data.email;
+exports.storeNewUser = functions.auth.user().onCreate((snap, context) => {
+    const data = snap.val();
+    const uid = data.uid;
+    const email = data.email;
 
     const coll = db.collection("users");
     //Add default data 
@@ -390,8 +391,9 @@ exports.storeNewUser = functions.auth.user().onCreate(event => {
 * Function to remove a user from the database                      *
 * Triggered by user deletion                                       *
 ********************************************************************/
-exports.removeUser = functions.auth.user().onDelete(event => {
-    const uid = event.data.uid;
+exports.removeUser = functions.auth.user().onDelete((snap, context) => {
+    const data = snap.val();
+    const uid = data.uid;
     const coll = db.collection("users");
 
     return coll.doc(uid).delete()
