@@ -351,10 +351,9 @@ exports.api = functions.https.onRequest(app);
 * Function to write newly created users to database                *
 * Triggered by new user creation                                   *
 ********************************************************************/
-exports.storeNewUser = functions.auth.user().onCreate((snap, context) => {
-    const data = snap.val();
-    const uid = data.uid;
-    const email = data.email;
+exports.storeNewUser = functions.auth.user().onCreate((userRecord, context) => {
+    const uid = userRecord.uid;
+    const email = userRecord.email;
 
     const coll = db.collection("users");
     //Add default data 
@@ -391,9 +390,8 @@ exports.storeNewUser = functions.auth.user().onCreate((snap, context) => {
 * Function to remove a user from the database                      *
 * Triggered by user deletion                                       *
 ********************************************************************/
-exports.removeUser = functions.auth.user().onDelete((snap, context) => {
-    const data = snap.val();
-    const uid = data.uid;
+exports.removeUser = functions.auth.user().onDelete((userRecord, context) => {
+    const uid = userRecord.uid;
     const coll = db.collection("users");
 
     return coll.doc(uid).delete()
