@@ -371,8 +371,6 @@ exports.storeNewUser = functions.auth.user().onCreate((userRecord, context) => {
             communityGroupUpdates: true,
             summerMissionUpdates: true
         },
-        created: Firestore.Timestamp.now(),
-        updated: Firestore.Timestamp.now(),
         disabled: false,
         deleted: null,
     })
