@@ -371,11 +371,10 @@ exports.storeNewUser = functions.auth.user().onCreate((userRecord, context) => {
             communityGroupUpdates: true,
             summerMissionUpdates: true
         },
-        permissions: {
-            isAdmin: false,
-            isVerified: false
-        },
-        lastActive: Date.now()
+        created: Firestore.Timestamp.now(),
+        updated: Firestore.Timestamp.now(),
+        disabled: false,
+        deleted: null,
     })
         .then(function () {
             console.log("New user successfully added to database");
